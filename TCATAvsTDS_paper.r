@@ -1,18 +1,14 @@
-# Analysis Cantin data
-#=========================
 library(ggplot2)
-library(CSUtils)
+library(CSUtils) # package available on https://github.com/ChemoSens
 library(MSnbase)
 library(reshape2)
 library(PTRMSR)
 library(gridExtra)
+
 #====================
-# Pretreatment (Figure 1)
+# Pretreatment (Figure 1)  - data is available in ExternalCode\dataForPretreatementExample
 #==================
-#wd="C:/INRA/Data/Donnees Cantin/Cantin-DTS-PTRviewer"
-#listFilesTest=list.files()
-#setwd(wd)
-datasetTest=read.table(file="CSCA098_S002_2.txt",sep='\t',header=T,dec=",")
+datasetTest=read.table(file="./dataForPretreatementExample/CSCA098_S002_2.txt",sep='\t',header=T,dec=",")
 ion_to_useTest=unique(colnames(datasetTest)[201:397])
 referenceBreathLong="m69.06906..69.06906...Conc."
 ion_to_useTest=ion_to_useTest[!ion_to_useTest%in%referenceBreathLong]
@@ -32,8 +28,7 @@ p2=report$gg$p_curves$p_raw
 p3=report$gg$p_curves$p_cycle
 
 
-datasetTestB=read.table(file="CSCA100_S001_3.txt",sep='\t',header=T,dec=".")
-metaData_tds[metaData_tds[,"file"]%in%listFilesTest[c(1,7)],]
+datasetTestB=read.table(file="./dataForPretreatementExample/CSCA100_S001_3.txt",sep='\t',header=T,dec=".")
 datasetTest2B=datasetTestB[,c("AbsTime",   "RelTime",   "Cycle",ion_to_useTest,referenceBreathLong  )]
 colnames(datasetTest2B)=substr(colnames(datasetTest2B),1,7)
 reportB=ptrvReport(dataset=datasetTest2B,selecIons="namely",
@@ -57,22 +52,21 @@ grid.arrange(p1+ggtitle("a."),
              p3B+ ggtitle("f.")+theme(legend.position="bottom")
              )
 
-
-# Relevant ion selection
-#======================
-#setwd("C:/INRA/Data/Donnees Cantin/Donnees&SeanceTimeSens")
+#======================================================
+# Relevant ion selection (data available on request)
+#======================================================
 dec_vec_tds=rep(".",96);dec_vec_tds[1]=",";
 noisePeriod=c(0,25)
 halfWindowSize=5
 
 # Selecting only relevant ions for each evaluations
-setwd("C:/INRA/Data/Donnees Cantin/Cantin-DTS-PTRviewer")
+#setwd("C:/INRA/Data/Donnees Cantin/Cantin-DTS-PTRviewer")
 listFilesTDS=list.files(pattern="*.txt")
 metaData_tds=read.table("metaData_tds.csv",sep=";",header=T)
 ion_tds=ptrvListSignificantSNRIons(listFilesTDS,metaData=metaData_tds,dec_vec=dec_vec_tds,
                                    noisePeriod=noisePeriod,halfWindowSize=halfWindowSize)
 
-setwd("C:/INRA/Data/Donnees Cantin/Cantin-TCATA-PTRviewer")
+#setwd("C:/INRA/Data/Donnees Cantin/Cantin-TCATA-PTRviewer")
 listFilesTCATA=list.files(pattern="*.txt")
 metaData_tcata=read.table("metaData_tcata.csv",sep=";",header=T)
 ion_tcata=ptrvListSignificantSNRIons(listFilesTCATA,metaData=metaData_tcata,
@@ -103,7 +97,7 @@ ion_to_use=ionSigUnique2[sapply(ionSigUnique2,function(x)return(substr(x,nchar(x
 ion_to_use
 
 #==========================
-# Pretreatment of data
+# Pretreatment of data (data available on request)
 #==========================
 # wd="C:/INRA/Data/Donnees Cantin/Cantin-DTS-PTRviewer"
 # setwd(wd)
@@ -198,8 +192,13 @@ tcata_final[,"product"]=substr(tcata_final[,"id"],6,6)
 tcata_final[,"subject"]=substr(tcata_final[,"id"],1,4)
 tcata_final[,"rep"]=substr(tcata_final[,"id"],8,8)
 
-# Using RGCCA 
+#============================================
+# Using RGCCA (data available on ExternalCode\dataForMultiblockAnalysis)
 #==========================================
+bloc_auc_tdsN=read.table("./dataForMultiblockAnalysis/ptr_tds.txt",header=T,sep="\t",row.names=1)
+bloc_auc_tcataN=read.table("./dataForMultiblockAnalysis/ptr_tcata.txt",header=T,sep="\t",row.names=1)
+bloc_durations_tds_corr=read.table("./dataForMultiblockAnalysis/tcata.txt",header=T,sep="\t",row.names=1)
+bloc_durations_tcata_corr=read.table("./dataForMultiblockAnalysis/tds.txt",header=T,sep="\t",row.names=1)
 library(RGCCA)
 connection=matrix(0,4,4)
 connection[1,2]=connection[2,1]=connection[3,4]=connection[4,3]=1
@@ -267,7 +266,6 @@ summary(factor(substr(names(res_classif_tcata[res_classif_tcata==2]),6,6)))
 summary(factor(substr(names(res_classif_tcata[res_classif_tcata==3]),6,6)))
 
 # Getting bootstrap results
-#============================
 bootres=bootstrap(resPLS,n_boot=1000)
 nmark=25
 p_boot1=plot(bootres,block=1,n_mark=nmark)
@@ -282,12 +280,11 @@ p_boot4_2=plot(bootres,block=4,comp=2,n_mark=nmark)
 grid.arrange( p_boot1_2+ggtitle("PTR-TDS: Axis 2 \n (1000 runs)"),p_boot2_2+ggtitle("TDS: Axis 2 \n (1000 runs)"),p_boot3_2 +ggtitle("PTR-TCATA: Axis 2 \n (1000 runs)"),p_boot4_2+ggtitle("TCATA: Axis 2 \n (1000 runs)"),     nrow=2,ncol=2)
 
 
-
-# Supplementary analyses
-#=============================
-
+#===============================================
+# Supplementary analyses (data available on request)
+#===============================================
 # Getting sensory curves (Figure 4)
-library(chemosensR)
+library(chemosensR) # package available on request
 analysis(tds,type="Standardized dominance curves",selection='product!="WarmUp"')
 analysis(tcata,type="Standardized dominance curves",selection='product!="WarmUp"')
 p_1=analysis(tds,type="Standardized dominance curves",selection='product!="WarmUp"')
@@ -326,5 +323,4 @@ anova_ptrtds=anovaTable( df=auc_tds_final,model= "intensity~product+(1|subject)+
 anptrtcata=anova_ptrtcata[,c("ion","F_Product","F_Product_Significance","Group_A","Group_B","Group_C")];colnames(anptrtcata)=c("ion","TCATA F","TCATA sig.","A_tcata","B_tcata","C_tcata")
 anptrtds=anova_ptrtds[,c("ion","F_Product","F_Product_Significance","Group_A","Group_B","Group_C")];colnames(anptrtds)=c("ion","TDS F","TDS sig.","A_tds","B_tds","C_tds")
 resanovaptr=merge(anptrtcata,anptrtds,by.x="ion",by.y="ion")
-#write.table(resanovaptr,"anovaTableptr.csv",row.names=F,sep=";")
 
