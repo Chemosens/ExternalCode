@@ -3,7 +3,7 @@
 #----- 2022 12 07
 #========================================
 
-# This code is separated in three parts: 
+# This code is separated in three parts:
 # -the first one for simulations (Material and Method part),
 # - the second one for the Result part
 # -and the third one for supplementary data material
@@ -23,6 +23,7 @@ library(CSUtils)
 library(FactoMineR)
 library(chemosensR)
 source("FunctionsCFDA_forPaper.R")
+# To modify depending on the directories to consider
 reposave="C:/Users/capeltier/Desktop/Communications/Articles/CFDATDS"
 repodata="C:/Users/capeltier/Desktop/DataAnalysis/QualitativeFDA"
 #==========================================
@@ -66,7 +67,7 @@ all_dat2=rbind(all_dat_P1S1,all_dat_P1S2,all_dat_P1S3,#all_b1,
 
 # Getting Figure 2
 tiff(file="Figure2.tiff",width=800,height=400,res=100)
-grid.arrange(plotData(all_dat2)+ggtitle("a. Toy dataset 1"),
+grid.arrange(plotData(all_dat)+ggtitle("a. Toy dataset 1"),
              plotData(all_dat2,col=rainbow(6))+ggtitle("b. Toy dataset 2"),nrow=1)
 dev.off()
 
@@ -125,18 +126,21 @@ dev.off()
 #=========================================
 # Part 2:  Analysis on real dataset (Results, Fig 6-10)
 #=========================================
-
-#tdsAll=read.xlsx("C:/Users/capeltier/Desktop/DataAnalysis/QualitativeFDA/datapaper.xlsx",sheet="TDS")
-#tdsAll2=tdsAll[,-c(1,3)]
-#colnames(tdsAll2)=c("subject","product","time","descriptor","score")
-#tdsAll2[,"rep"]=1
-#tdsA=tdsRead(df=tdsAll2)
-#save(tdsA,file="tdsA.RData")
-
+# Remark: the function tdsRead provides from a private R package chemoSensR that is useful for TDS data in timesens format.
+# Obtaining the data from the data paper
+# tdsAll=read.xlsx("C:/Users/capeltier/Desktop/DataAnalysis/QualitativeFDA/datapaper.xlsx",sheet="TDS")
+# tdsAll2=tdsAll[,-c(1,3)]
+# colnames(tdsAll2)=c("subject","product","time","descriptor","score")
+# tdsAll2[,"rep"]=1
+# tdsA=tdsRead(df=tdsAll2)
+# save(tdsA,file="tdsA.RData")
 # Loading the data
-setwd(repodata)
-load("tdsA.Rdata")
-# Chips
+# setwd(repodata)
+# load("tdsA.Rdata") # tdsA is an object that is too
+# write.table(file=paste0(reposave,"/crisps.csv"),tdsA$df[tdsA$df[,"product"]%in%products,],row.names=FALSE,sep=";")
+
+
+# Crisps
 products=c("C1","C2","C3","C4")
 # Colors with stop
 colors=c("dodgerblue","dodgerblue4","forestgreen","red","darkorange1","darkolivegreen1","brown","darkorchid1","hotpink","white")
@@ -145,11 +149,15 @@ names(colors)=c("Bland","Crackly_Hard","Crispy","Fat","Melting","Potato","Roaste
 colors2=c("dodgerblue","dodgerblue4","forestgreen","red","darkorange1","darkolivegreen1","brown","darkorchid1","hotpink")
 names(colors2)=c("Bland","Crackly_Hard","Crispy","Fat","Melting","Potato","Roasted","Salty","Sticky_Pasty")
 nchar_prod=2
-prod1=tdsA$df[tdsA$df[,"product"]==products[1],]
-prod2=tdsA$df[tdsA$df[,"product"]==products[2],]
-prod3=tdsA$df[tdsA$df[,"product"]==products[3],]
-prod4=tdsA$df[tdsA$df[,"product"]==products[4],]
-all_prod=rbind(prod1,prod2,prod3,prod4)
+
+
+# prod1=tdsA$df[tdsA$df[,"product"]==products[1],]
+# prod2=tdsA$df[tdsA$df[,"product"]==products[2],]
+# prod3=tdsA$df[tdsA$df[,"product"]==products[3],]
+# prod4=tdsA$df[tdsA$df[,"product"]==products[4],]
+# all_prod=rbind(prod1,prod2,prod3,prod4)
+all_prod=read.table(file=paste0(reposave,"/crisps.csv"),sep=";")
+
 
 # Plotting the legend
 plot(NULL)
@@ -157,9 +165,9 @@ legend(x="center",fill=colors2,names(colors2))
 summary(as.factor(as.character(tdsA$df[tdsA$df[,"product"]%in%products,"descriptor"])))
 # Removing the replicate
 
-# Outputs without CFDA (PCA and curves)
-#===================================
-# TDS curves (Figure 6)
+# Outputs without CFDA (PCA and curves) /!\ requires ChemosensR package
+#======================================
+# TDS curves (Figure 6 a)
 dom=tdsA$stdDominances[tdsA$stdDominances[,"product"]%in% products,]
 dom[,"product"]=as.factor(as.character(dom[,"product"]))
 dom=dom[dom[,"descriptor"]%in%names(colors2),]
@@ -168,7 +176,7 @@ summary(dom[,"descriptor"])
 p=tdsDominanceCurves(dom)$gg
 p+scale_color_manual(values=colors[1:9])
 
-# PCA with PCAgg (Figure 7)
+# PCA with PCAgg (Figure 6 b)
 pca=PCAgg(tdsA$durations[tdsA$durations[,"product"]%in%products,],representation="DistanceBiplot",expandBiplot=50,option="Covariance")
 p3=plotPCAgg(pca,type="biplot",indSup=c("points"))
 p3
@@ -199,6 +207,10 @@ h24=HotellingTest(pcaFacto$ind.sup$coord[substr(rownames(pcaFacto$ind.sup$coord)
 h34=HotellingTest(pcaFacto$ind.sup$coord[substr(rownames(pcaFacto$ind.sup$coord),1,2)=="C4",1:2],
                   pcaFacto$ind.sup$coord[substr(rownames(pcaFacto$ind.sup$coord),1,2)=="C3",1:2])$p.value
 
+
+
+# Running CFDA on real TDS dataset
+#===================================
 # Converting TDS for CFDA
 all_dat=convertForCfda(tds=NULL,tdsdf=all_prod)
 # Visualzing the data
@@ -213,9 +225,6 @@ p3=plot(pt_evol3,col=colors,ribbon = TRUE)+ggtitle(paste0("P(X(t)=x) for ",produ
 p4=plot(pt_evol4,col=colors,ribbon = TRUE)+ggtitle(paste0("P(X(t)=x) for ",products[4]))
 p5=plot(pt_evol_all,col=colors[names(colors)!="stop"],ribbon=TRUE)+ggtitle("e. P(X(t)=x for all products")
 
-
-# Running CFDA on real TDS dataset
-#===================================
 all_dat_wr=all_dat
 enc_all=getOptEnc(all_dat_wr,nbasis=8,norder=3)
 pc=enc_all$fmca$pc
@@ -229,8 +238,8 @@ pt_evol_all <- estimate_pt(all_dat[all_dat[,"state"]!="stop",])
 p5=plot(pt_evol_all,col=colors[names(colors)!="stop"],ribbon=TRUE)+ggtitle("e. P(X(t)=x for all products")
 p6=plotData(all_dat[all_dat[,"id"]%in%rownames(pc[pc[,1]>0.5&pc[,2]>0.5,]),],col=colors2)+ggtitle("f. Specific raw data")
 
-# Figure 8
-tiff(file="Figure8.tiff",width=800,height=1200,res=100)
+# Figure 7
+tiff(file="Figure7.tiff",width=800,height=1200,res=100)
 grid.arrange(enc_all$p_eig+ggtitle("a. Cumulative eigenvalues"),
              gg_ind+ggtitle("b. Individual map"),
              p_harm1$p_exp+theme(legend.position="none")+ggtitle("c. Harm. 1"),
@@ -252,7 +261,7 @@ set.seed(1)
 tune.splsda.srbct <- tune.splsda(X, groups, ncomp = 3, # calculate for first 4 components
                                  validation = 'Mfold',
                                  folds = 3, nrepeat = 50, # use repeated cross-validation
-                                 dist = 'mahalanobis.dist', 
+                                 dist = 'mahalanobis.dist',
                                  measure = "BER", # use balanced error rate of dist measure
                                  test.keepX = list.keepX,
                                  cpus = 6) # allow for parallelisation to decrease runtime
@@ -285,14 +294,14 @@ hcfda13
 hcfda23
 
 
-# Results of sPLS (Fig. 9)
+# Results of sPLS (Fig. 8)
 df_ind=as.data.frame(ressplsda$variates$X)
 df_ind[,"product"]=groups
 p_ind=ggplot(df_ind,aes(x=comp1,y=comp2,col=product))+geom_point()+theme_bw()+ggtitle("a. Individual plot")+geom_vline(xintercept=0,col="grey")+geom_hline(yintercept=0,col="grey")
 p_h1=trajectoiresPropres(enc_all,vecteurPropre=ressplsda$loadings$X[,1],colors=colors,sizeLine="none")$p_exp+ggtitle("b. Harm. 1")+geom_hline(yintercept=0,col="grey")
 p_h2=trajectoiresPropres(enc_all,vecteurPropre=ressplsda$loadings$X[,2],colors=colors,sizeLine="none")$p_exp+ggtitle("c. Harm. 2")+geom_hline(yintercept=0,col="grey")
 setwd(reposave)
-tiff(filename="Figure9.tiff",width=800, height=800,res=100 )
+tiff(filename="Figure8.tiff",width=800, height=800,res=100 )
 grid.arrange(p_tune+ggtitle("a. Tuning results"),
              p_ind+ggtitle("b. Individual map"),
              p_h1+theme(legend.position="none")+ggtitle("c. Harm. 1"),
@@ -302,10 +311,10 @@ graphics.off()
 summary(manova(ressplsda$variates$X[,1:2]~groups),test="Wilks")
 summary(manova(as.matrix(pca$indSup[,c("x","y")])~as.factor(pca$indSup[,"product"])),test="Wilks")
 
-# Classification (Fig. 10)
+# Classification (Fig. 9)
 #=====================
 # Selecting only prod3=C3
-prodC3=rbind(prod3)
+prodC3=all_prod[all_prod[,"product"]=="C3",]
 prod_converted=convertForCfda(tds=NULL,tdsdf=prodC3)
 plotData(prod_converted,col=colors)
 # Running cfda
@@ -338,60 +347,10 @@ p1=plotData(prod_converted[prod_converted[,"id"]%in%gp1,],col=colors)+ggtitle(pa
 p2=plotData(prod_converted[prod_converted[,"id"]%in%gp2,],col=colors)+ggtitle(paste0("e. Group 2 (n=",summary(factor(groups))[2],")"))+theme(legend.position="none")
 p3=plotData(prod_converted[prod_converted[,"id"]%in%gp3,],col=colors)+ggtitle(paste0("f. Group 3 (n=",summary(factor(groups))[3],")"))+theme(legend.position="none")
 setwd(reposave)
-tiff(filename="Figure10.tiff",width=800, height=600,res=100 )
+tiff(filename="Figure9.tiff",width=800, height=600,res=100 )
 grid.arrange(p01+ggtitle("a. Individual map"),
              p_harm1$p_exp+ggtitle("b. Harm. 1")+theme(legend.position="none"),
              p_harm2$p_exp+ggtitle("c. Harm. 2")+theme(legend.position="none"),
              p1,p2,p3,
              nrow=2)
 dev.off()
-#======================================
-# Supplementary data (Part 3)
-#======================================
-
-# Reconstructing a barplot of a subject
-#======================================
-Ncomp=70
-res=list()
-pctNcomp=rep(NA,Ncomp)
-for(ncomp in 1:Ncomp)
-{
-  print(ncomp)
-  res[[ncomp]]=reconstructBarplot(ncomp,enc_allC3,prod_converted)
-  pctNcomp[ncomp]=sum(res[[ncomp]]$real_att_j==res[[ncomp]]$att_j,na.rm=T)/(dim(res[[ncomp]]$att_j)[1]*dim(res[[ncomp]]$att_j)[2])
-}
-
-res1=res[[1]]$df_res
-res2=res[[2]]$df_res
-res3=res[[3]]$df_res
-res5=res[[5]]$df_res
-res10=res[[10]]$df_res
-res20=res[[20]]$df_res
-res50=res[[50]]$df_res
-
-p0=plotData(prod_converted,col=colors,addBorder=F)+ggtitle("h. 0riginal data")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p1=plotData(res1,col=colors,addBorder=F)+ggtitle("a. Estimation (p=1)")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p2=plotData(res2,col=colors,addBorder=F)+ggtitle("b. Estimation (p=2)")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p3=plotData(res3,col=colors,addBorder=F)+ggtitle("c. Estimation (p=3)")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p5=plotData(res5,col=colors,addBorder=F)+ggtitle("d. Estimation (p=5)")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p10=plotData(res10,col=colors,addBorder=F)+ggtitle("e. Estimation (p=10)")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p20=plotData(res20,col=colors,addBorder=F)+ggtitle("f. Estimation (p=20)")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p50=plotData(res50,col=colors,addBorder=F)+ggtitle("g. Estimation (p=50)")+theme(legend.position="none",axis.text.y = element_blank(),axis.ticks = element_blank())
-p_prop=ggplot(data.frame(x=1:70,y=pctNcomp),aes(x=x,y=y))+geom_point()+theme_bw()+ggtitle("i. Quality of estimation")+ylab("Proportion of good estimates")+xlab("Number of components")
-setwd(reposave)
-tiff(filename="Figure11.tiff",width=1000, height=1000,res=100 )
-grid.arrange(p1,p2,p3,p5,p10,p20,p50,p0,p_prop)
-dev.off()
-
-
-tds123=getTdsObjectFromReconstruction(res,c(1,5,50))
-tds5to20=getTdsObjectFromReconstruction(res,c(2,10,60))
-tds50=getTdsObjectFromReconstruction(res,c(3,20,70))
-p=tdsDominanceCurves(dom[dom[,"product"]=="C3",])
-p$gg+gg+scale_color_manual(values=colors[1:9])
-tdsDominanceCurves(tds123$tds)$gg+ylim(c(0,70))+scale_color_manual(values=colors[1:9])
-tdsDominanceCurves(tds5to20$tds)$gg+ylim(c(0,70))+scale_color_manual(values=colors[1:9])
-tdsDominanceCurves(tds50$tds)$gg+ylim(c(0,70))+scale_color_manual(values=colors[1:9])
-
-p=tdsDominanceCurves(dom[dom[,"product"]=="C3",])$gg
-p+scale_color_manual(values=colors[1:9])+ylim(c(0,60))
