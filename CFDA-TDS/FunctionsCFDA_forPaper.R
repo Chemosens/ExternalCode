@@ -80,6 +80,9 @@ getOptEnc=function(tds_df4,nbasis=6,ncores=6,norder=3,text=TRUE,colors=NULL,nBoo
 {
   basis <- create.bspline.basis(c(0, max(tds_df4[,"time"])), nbasis = nbasis, norder = norder)
   fmca <- compute_optimal_encoding(tds_df4, basis, nCores = ncores,nBootstrap=nBootstrap)
+  minScore=min(fmca$pc[,1:2])
+  maxScore=max(fmca$pc[,1:2])
+
    if(repel==TRUE)
   {
      df=fmca$pc
@@ -87,23 +90,27 @@ getOptEnc=function(tds_df4,nbasis=6,ncores=6,norder=3,text=TRUE,colors=NULL,nBoo
      df=as.data.frame(df)
      df[,"name"]=rownames(df)
      p_comp=plotComponent(fmca,addNames=F)+geom_vline(xintercept=0,color="darkgrey")+geom_hline(yintercept=0,color="darkgrey")
-     p_comp=p_comp+geom_text_repel(x=df[,"PC1"],y=df[,"PC2"],label=df[,"name"])
+     p_comp=p_comp+geom_text_repel(x=df[,"PC1"],y=df[,"PC2"],label=df[,"name"])+theme(panel.grid = element_line(color = "grey92",
+                                                                                                                size = 0.01,
+                                                                                                                linetype = 2),
+                                                                                      panel.background = element_blank())
    }
   if(repel==FALSE)
   {
-    p_comp=plotComponent(fmca,addNames=text)+geom_vline(xintercept=0,color="darkgrey")+geom_hline(yintercept=0,color="darkgrey")
-
+    p_comp=plotComponent(fmca,addNames=text)+geom_vline(xintercept=0,color="darkgrey")+geom_hline(yintercept=0,color="darkgrey")+theme(panel.grid = element_line(color = "grey92",size = 0.01,
+                                                                                                                                                                 linetype = 2),
+                                                                                                                                       panel.background = element_blank())
   }
 
   p_eig=plotEigenvalues(fmca, cumulative = TRUE, normalize = TRUE)
-  p_harm1=plot(fmca,col=colors)
-  p_h1=p_harm1+theme_bw()+ggtitle("Harm. 1")
-  p_harm2=plot(fmca, harm=2,col=colors)
-  p_h2=p_harm2+theme_bw()+ggtitle("Harm. 2")
+ # p_harm1=plot(fmca,col=colors)
+  p_h1=plot(fmca, harm=1,col=colors)
+  p_h2=plot(fmca, harm=2,col=colors)
   p_eig=p_eig+theme_bw()
-  p_comp=p_comp+ggtitle("Individual map")+theme_bw()+geom_hline(yintercept=0,color="grey")+geom_vline(xintercept=0,color="grey")
+  p_comp=p_comp+ggtitle("Individual map")+xlim(minScore,maxScore)+ylim(minScore,maxScore)
   return(list(fmca=fmca,basis=basis,p_comp=p_comp,p_h1=p_h1,p_h2=p_h2,p_eig=p_eig))
 }
+
 
 
 # Returns trajectories related to a linear combination of harmonics
@@ -114,7 +121,7 @@ getOptEnc=function(tds_df4,nbasis=6,ncores=6,norder=3,text=TRUE,colors=NULL,nBoo
 #'@param sizeLine size of the harmonic line : "none", "default"(number of citation),"max" or "manual"
 #'@param sizeVec if sizeLine=="manual", vector containing the size of the descriptors (whose names are descriptors)
 #'@param maxSize number indicating the maximal size of the line
-trajectoiresPropres=function(enc_all,vecteurPropre=reslda$scaling[,paste0("LD",harm)],nbPts=100,colors,sizeLine="none",sizeVec=NULL,maxSize=4)
+trajectoiresPropres=function(enc_all,vecteurPropre=reslda$scaling[,paste0("LD",harm)],nbPts=100,colors,sizeLine="none",sizeVec=NULL,maxSize=4,lwd=1)
 {
   fdlist=list()
   #if(is.null(vecteurPropre)){vecteurPropre=rep(1,ncomp)}
@@ -125,7 +132,10 @@ trajectoiresPropres=function(enc_all,vecteurPropre=reslda$scaling[,paste0("LD",h
     fdObj <- fd(alpha, enc_all$fmca$basis)#utilisation de la fonction fd pour obtenir les fonctions propres
     rangex <- fdObj$basis$rangeval
     nBasis <- fdObj$basis$nbasis
-    fdlist[[i]] <- eval.fd(seq(0,1,length=nbPts), fdObj)*vecteurPropre[i] #utilisation de la fonction eval.fd pour avoir un nombre discret de points
+    timeVal=seq(0,1,length=nbPts)
+    fdlist[[i]] <- eval.fd(timeVal, fdObj)*vecteurPropre[i] #utilisation de la fonction eval.fd pour avoir un nombre discret de points
+    fdlist[[i]]=removeTimeAssociatedWithNACoeff( fdlist[[i]],timeVal,enc_all$fmca$pt)
+
     if(i==1){matres=fdlist[[1]]}
     if(i>1){matres=matres+fdlist[[i]]}
   }
@@ -144,7 +154,7 @@ trajectoiresPropres=function(enc_all,vecteurPropre=reslda$scaling[,paste0("LD",h
   }
   else
   {
-    p_exp=ggplot(ggfdmat[ggfdmat[,"descriptor"]!="stop",],aes(x=time,y=score,color=descriptor))+geom_line()+scale_color_manual(values=colors)+theme_bw()
+    p_exp=ggplot(ggfdmat[ggfdmat[,"descriptor"]!="stop",],aes(x=time,y=score,color=descriptor,linetype=descriptor))+geom_line(linewidth=lwd)+scale_color_manual(values=colors)+theme_bw()
   }
   listing=list(p_exp=p_exp,fdres=fdres,ggfdmat=ggfdmat)
 
@@ -157,39 +167,56 @@ trajectoiresPropres=function(enc_all,vecteurPropre=reslda$scaling[,paste0("LD",h
 #'@param sizeLine size of the harmonic line : "none", "default"(number of citation),"max" or "manual"
 #'@param sizeVec if sizeLine=="manual", vector containing the size of the descriptors (whose names are descriptors)
 #'@param maxSize number indicating the maximal size of the line
-plotHarm=function(enc_all,harm=1,colors,sizeLine="none",sizeVec=NULL,maxSize=4)
+get_proba=function (pt, t)
 {
-
-  fdlist=list()
-  # if(class(enc_all)=="pca.fd")
-  # {
-  #   alpha=enc_all$harmonics$coefs[,harm]
-  #   fdObj <- fd(alpha, enc_all$harmonics$basis)#utilisation de la fonction fd pour obtenir les fonctions propres
-  # }
-  if(class(enc_all)!="pca.fd")
-  {
-    alpha <- enc_all$fmca$alpha[[harm]] # selection des alpha
-    fdObj <- fd(alpha, enc_all$fmca$basis)#utilisation de la fonction fd pour obtenir les fonctions propres
+  i <- sum(t >= pt$t)
+  if (i == 0) {
+    p <- rep(NA, nrow(pt$pt))
+    names(p) <- rownames(pt$pt)
+    return(p)
   }
-  #if(is.null(vecteurPropre)){vecteurPropre=rep(1,ncomp)}
+  return(pt$pt[, i])
+}
+
+removeTimeAssociatedWithNACoeff=function (fdmat, timeVal, pt)
+{
+  p <- t(sapply(timeVal, get_proba, pt = pt))
+  p <- p[, match(colnames(fdmat), colnames(p))]
+  p[p != 0] <- 1
+  p[p == 0] <- NA
+  return(p * fdmat)
+}
+
+plotHarm=function(enc_all,harm=1,colors=NULL,sizeLine="none",sizeVec=NULL,maxSize=4,lwd=1)
+{
+   fdlist=list()
+   alpha <- enc_all$fmca$alpha[[harm]] # selection des alpha
+   fdObj <- fd(alpha, enc_all$fmca$basis)#use of fd for obtaining eigenfunctions
     alpha[is.na(alpha)]=0
     rangex <- fdObj$basis$rangeval
     nBasis <- fdObj$basis$nbasis
-    fdlist[[harm]] <- eval.fd(seq(0,1,length=100), fdObj) #utilisation de la fonction eval.fd pour avoir un nombre discret de points
-     matres=fdlist[[harm]]
-  # On obtient une matrice avec 100 lignes nbAttributs colonnes (valable pour l'axe 1)
-  fdres=as.data.frame(matres);fdres[,"time"]=seq(0,1,length=100)
+    fdObj$coefs[is.na(fdObj$coefs)]=0
+    timeVal <- seq(0,1, length = 100)
+    fdlist[[harm]] <- eval.fd(timeVal, fdObj) #use of eval.fd to have a discrete number of points
+    fdlist[[harm]]=removeTimeAssociatedWithNACoeff( fdlist[[harm]],timeVal,enc_all$fmca$pt)
+    matres=fdlist[[harm]]
+   fdres=as.data.frame(matres);fdres[,"time"]=timeVal
+  if(is.null(colors)){colors=rainbow(ncol(matres));names(colors)=colnames(matres)}
+
   ggfdmat=reshape(fdres,direction="long",varying=list(colnames(matres)),times=colnames(matres),timevar="descriptor",v.names="score")
      if(sizeLine!="none")
      {
        df_size=getSizeTable(enc_all,sizeLine=sizeLine,sizeVec=sizeVec,maxSize=maxSize)
        ggfdmat=merge(ggfdmat,df_size,by="descriptor")
-       p_exp=ggplot(ggfdmat[ggfdmat[,"descriptor"]!="stop",],aes(x=time,y=score,color=descriptor,size=size))+geom_line()+scale_color_manual(values=colors)+theme_bw()+ scale_size(range = c(0,maxSize))+geom_hline(yintercept=0,color="grey")
+       p_exp=ggplot(ggfdmat[ggfdmat[,"descriptor"]!="stop",],aes(x=time,y=score,color=descriptor,size=size))+geom_hline(yintercept=0,color="grey")+geom_line(linewidth=lwd,aes(linetype=descriptor))+scale_color_manual(values=colors)+theme(panel.grid(color="grey90",linetype=2),
+                                                                                                                                                                                                                               panel.background = element_blank())
      }
      else
      {
-       p_exp=ggplot(ggfdmat[ggfdmat[,"descriptor"]!="stop",],aes(x=time,y=score,color=descriptor))+geom_line()+scale_color_manual(values=colors)+theme_bw()+geom_hline(yintercept=0,color="grey")
+        p_exp=ggplot(ggfdmat[ggfdmat[,"descriptor"]!="stop",],aes(x=time,y=score,color=descriptor))+geom_hline(yintercept=0,color="grey")+geom_line(linewidth=lwd,aes(linetype=descriptor))+scale_color_manual(values=colors)+theme(panel.grid=element_line(color="grey90",linetype=2),panel.background = element_blank())
+
      }
+  p_exp=p_exp+ggtitle(paste0("Harmonic ",harm))
   listing=list(p_exp=p_exp,fdres=fdres,ggfdmat=ggfdmat)
   return(listing)
 }
@@ -233,85 +260,4 @@ getSizeTable=function(enc_all,sizeLine,sizeVec,maxSize)
     df_size=data.frame(descriptor=names(size),size=1)
   }
   return(df_size)
-}
-#' @param ncomp: number of component to use in the reconstruction
-#' @param enc_all result of encAll function
-#' @param prod_converted
-reconstructBarplot=function(ncomp,enc_all,prod_converted)
-{
-  matres=list()
-  for(k in 1:ncomp)
-  {
-    fdObj <- fd(enc_all$fmca$alpha[[k]], enc_all$fmca$basis)#utilisation de la fonction fd pour obtenir les fonctions propres
-    matres[[k]] <- eval.fd(seq(0,1,length=100), fdObj) #utilisation de la fonction eval.fd pour avoir un nombre discret de points
-    #fdres=as.data.frame(matres);fdres[[k]][,"time"]=seq(0,1,length=100)
-  }
-  mat_tot=list()
-  p_exp=list()
-  real_att_j=att_j=matrix(NA,100,nrow(enc_all$fmca$pc))
-  df_res=data.frame()
-  #  att_j=real_att_j=matrix(NA,dim(mat_tot_i)[1],nrow(enc_all$fmca$pc))
-  for(i in 1:nrow(enc_all$fmca$pc))# Sum on the subjects
-  {
-    mat_tot_i=matrix(0,dim(matres[[k]])[1],dim(matres[[k]])[2])
-    for(k in 1:ncomp)
-    {
-      mat_tot_i=mat_tot_i+enc_all$fmca$pc[i,k]*matres[[k]]
-    }
-    mat_tot[[i]]=mat_tot_i
-    fdres_tot=as.data.frame(mat_tot_i);fdres_tot[,"time"]=seq(0,1,length=100)
-    rshp=reshape(fdres_tot,direction="long",idvar="time",timevar="descr",v.names="score",varying=list(colnames(mat_tot_i)),times=colnames(mat_tot_i))
-    p_exp[[i]]=ggplot(rshp,aes(x=time,y=score,color=descr))+geom_line()+theme_bw()+geom_hline(yintercept=0,color="grey")
-    prod_i=prod_converted[prod_converted[,"id"]==rownames(enc_all$fmca$pc)[i],]
-    prod_i=prod_i[order(prod_i[,"time"]),]
-    for(j in 1:(dim(mat_tot_i)[1]))# For each time
-    {
-      att_j[j,i]=colnames(mat_tot_i)[which.max(mat_tot_i[j,])]
-      time2=prod_i[-1,"time"] 
-      if(j!=dim(mat_tot_i)[1]-1)
-      {
-        indice_time=which(prod_i[-nrow(prod_i),"time"]<=fdres_tot[,"time"][j]&time2>=fdres_tot[,"time"][j])
-      }
-      else
-      {
-        indice_time=dim(prod_i)[1]
-      }
-      real_att_j[j,i]=prod_i[indice_time,"state"]
-    }
-    df_i=data.frame(id=rownames(enc_all$fmca$pc)[i],time=fdres_tot[,"time"],state=att_j[,i])
-    df_res=rbind(df_res,df_i)
-  }
-  names(mat_tot)=rownames(enc_all$fmca$pc)
-  return(list(df_res=df_res,real_att_j=real_att_j,att_j=att_j,mat_tot=mat_tot,p_exp=p_exp))
-}
-#' Requires chemosensR for reading TDS data
-#' 
-#' @param res result of reconstructBarplot
-#'@param indices indexes of res to be recontructeds
-getTdsObjectFromReconstruction=function(res,indices)
-{
-  df_resAll=data.frame()
-  for(i in indices)
-  {
-    df_res=res[[i]]$df_res
-    df_res[,"rep"]=1
-    if(i<10){i0=paste0(0,i)}else{i0=i}
-    df_res[,"product"]=paste0("N",i0)
-    df_res[,"subject"]=substr(df_res[,"id"],3,5)
-    df_res[,"descriptor"]=df_res[,"state"]
-    df_res[,"score"]=1
-    df_res[,"period"]=1
-    df_res=df_res[,c("subject","product","time","descriptor","score","rep")]
-    for(subj in unique(df_res[,"subject"]) )
-    {
-      for(prod in unique(df_res[,"product"]))
-      {
-        dfStartStop=data.frame(subject=rep(subj,2),product=rep(prod,2),time=c(0,1),descriptor=c("START","STOP"),score=c(1,1),rep=c(1,1))
-        df_res=rbind(df_res,dfStartStop)
-      }
-    }
-    df_resAll=rbind(df_resAll,df_res)
-  }
-  tdsFictive=tdsRead(df=df_resAll,discretization=0.01)
-  return(list(tds=tdsFictive,df=df_resAll))
 }
