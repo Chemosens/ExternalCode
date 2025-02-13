@@ -23,7 +23,7 @@ library(MFPCA)
 # The following functions are in the git repository https://github.com/Chemosens/ExternalCode/MFPCAWithCategoricalTrajectories.
 source("convertForCfda.r")
 source("plotSignal.r")
-source("getIndicatrices.r")
+source("getIndicators.r")
 source("tdsRead.r")
 source("cleanDf.r")
 source("splitInPeriods.r")# Reading data
@@ -114,7 +114,7 @@ names(df_mfpca) <- etats
 for (i in 1:n_ind)
 {
   df_temp <- df_norm1[df_norm1$id==nom_ind[i],]
-  mat_temp <- getIndicatrices(df_temp$state,df_temp$time,times.out=temps.out)
+  mat_temp <- getIndicators(df_temp$state,df_temp$time,times.out=temps.out)
   state_temp <- unique(df_temp$state) 
   for (j in 1:length(state_temp)){
     nom_etat <- state_temp[j]

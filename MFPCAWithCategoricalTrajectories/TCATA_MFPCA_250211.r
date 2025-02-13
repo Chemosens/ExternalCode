@@ -21,7 +21,7 @@ library(MFPCA)
 # The following functions are in the git repository https://github.com/Chemosens/ExternalCode/MFPCAWithCategoricalTrajectories.
 source("tcataRead.r")
 source("plotSignal.r")
-source("getIndicatrices.r")
+source("getIndicators.r")
 # datapaper.xlsx is obtained on https://data.mendeley.com/datasets/3j6h7mrxnf/1 and should be cited as
 # Visalli, Michel; Béno, Noëlle (2023), “A dataset of consumer perceptions of gustometer-controlled stimuli measured with three temporal sensory evaluation methods”, Paris-Saclay University, V1, doi: 10.17632/3j6h7mrxnf.1
 
@@ -79,7 +79,7 @@ for (i in 1:n_ind) # Here, unlike TDS, it must be filled according to the score 
   for(descriptor in descriptors)
   {
     df_temp <- df_norm1[df_norm1$id==nom_ind[i]&df_norm1$descriptor==descriptor,]
-    mat_temp <- getIndicatrices(df_temp$state,df_temp$time,times.out=temps.out)
+    mat_temp <- getIndicators(df_temp$state,df_temp$time,times.out=temps.out)
    state_temp <- unique(df_temp$state) 
    for (j in 1:length(state_temp)){
     nom_etat <- state_temp[j]

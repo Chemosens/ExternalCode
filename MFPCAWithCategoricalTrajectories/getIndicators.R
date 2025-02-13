@@ -1,10 +1,8 @@
-getIndicatrices <- function(state, times, times.out=seq(0,1,length=100))
+getIndicators <- function(state, times, times.out=seq(0,1,length=100))
 {
   npoints <- length(times.out)
   if(any(diff(times)<0)){stop("times should be ordered")}
-  #  indicatrices=matrix(0,length(unique(state)),length(times))
   indicatrices <- matrix(0,length(unique(state)),npoints)
-  #   colnames(indicatrices)=as.character(times)
   rownames(indicatrices) <- unique(state)
   for(i in 1:(length(state)-1))
   {     
